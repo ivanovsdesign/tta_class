@@ -1,2 +1,2 @@
-# tta_class
+# TTA Classification
 Code for applying test-time augmentations
