@@ -1,0 +1,6 @@
+_target_: models.encoder.ISICModel
+
+backbone: "tf_efficientnetv2_s"
+drop_rate: 0
+drop_rate_path: 0.
+drop_rate_last: 0.3

@@ -1,0 +1,9 @@
+name: cxr
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ipykernel
+  - numpy
+  - clearml
+prefix: /root/miniconda/envs/cxr
