@@ -3,6 +3,8 @@ defaults:
   - model: enetv2s
   - criterion: ce
 
+name: enetv2s
+
 img_size: 224
 batch_size: 32
 num_workers: 0

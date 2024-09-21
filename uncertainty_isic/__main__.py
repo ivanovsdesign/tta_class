@@ -10,7 +10,7 @@ import torch.nn as nn
 import albumentations as A
 
 from pipeline.train import ISICTrainingPipeline
-from pipeline.transforms.augemntation import get_transforms
+from pipeline.transforms.augmentation import get_transforms
 
 # Modules
 from modules.data import ISICDataModule
@@ -34,7 +34,10 @@ def main(cfg: DictConfig):
     
     training_pipeline = ISICTrainingPipeline(datamodule=datamodule,
                                              module=module,
-                                             max_epochs=cfg.max_epochs)
+                                             max_epochs=cfg.max_epochs,
+                                             cfg=cfg)
+    
+    training_pipeline.train()
     
 
 if __name__ == '__main__':

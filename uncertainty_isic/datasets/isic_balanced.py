@@ -4,7 +4,7 @@ from typing import List
 import cv2
 import os
 
-from torch.data.utils import Dataset
+from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 
 class ISICDataset(Dataset):
