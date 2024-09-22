@@ -33,8 +33,10 @@ import gc
 
 @hydra.main(config_path="config", config_name="config")
 def main(cfg: DictConfig):
+    #Task.set_offline(True)
     task = Task.init(project_name='isic_balanced',
-                task_name='debug' if cfg.debug else f'{cfg.name}')
+               task_name=f'debug_{cfg.name}' if cfg.debug else f'{cfg.name}')
+    
     kfold = StratifiedKFold(n_splits=cfg.num_folds, shuffle=True, random_state=cfg.seed)
 
     full_dataset = pd.read_csv('/repo/tta_class/data/dataset.csv')
@@ -46,6 +48,8 @@ def main(cfg: DictConfig):
         df_negative = full_dataset[full_dataset['target'] == 0].iloc[:100, :]
         
         full_dataset = pd.concat([df_positive, df_negative], ignore_index=True)
+    
+    all_metrics = []
     
     for fold, (train_idx, val_idx) in enumerate(kfold.split(full_dataset, full_dataset['target'])):
 
@@ -85,33 +89,46 @@ def main(cfg: DictConfig):
 
 
         inference_pipeline = ISICInferencePipeline(datamodule=datamodule,
-                                                    module=module)
-        preds_no_tta, targets_no_tta = inference_pipeline.inference_without_tta()
+                                                    module=module,
+                                                    criterion=criterion)
+        preds_no_tta, targets_no_tta, uncertainties_no_tta, confidences_no_tta  = inference_pipeline.inference_without_tta()
         metrics_no_tta = inference_pipeline.compute_metrics(preds = preds_no_tta,
                                                             targets = targets_no_tta,
+                                                            certainties=uncertainties_no_tta,
+                                                            confidences=confidences_no_tta,
                                                             prefix = 'no_tta')
-    
+        
         np.save(f'preds_{cfg.name}_{fold}.npy', preds_no_tta)
         np.save(f'targets_{cfg.name}_{fold}.npy', targets_no_tta)
+        
+        preds_tta, targets_tta, uncertainties_tta, confidences_tta = inference_pipeline.inference_with_tta(num_tta=cfg.num_tta)
+
+        np.save(f'preds_tta_{cfg.name}_{fold}.npy', preds_no_tta)
+        np.save(f'targets_tta_{cfg.name}_{fold}.npy', targets_no_tta)
+
+        metrics_tta = inference_pipeline.compute_metrics(preds = preds_tta,
+                                                            targets = targets_tta,
+                                                            certainties=uncertainties_tta,
+                                                            confidences=confidences_tta,
+                                                            prefix = 'tta')
+    
 
         metrics = {
             'name' : cfg.name,
             'fold' : fold,
             'checkpoint_path' : best_ckpt_path,
-            **metrics_no_tta
+            **metrics_no_tta,
+            **metrics_tta
         }
 
         metrics = pd.DataFrame([metrics])
 
+        all_metrics.append(metrics)
+
         numeric_columns = metrics.columns[3:]
         metrics[numeric_columns] = metrics[numeric_columns].astype(float)
 
-        Logger.current_logger().report_table(
-            title=f'{cfg.name}_fold{fold}', 
-            series="PD with index", 
-            iteration=fold, 
-            table_plot=metrics
-        )
+        metrics.to_csv(f'{fold}_metrics.csv')
 
         del model
         del datamodule
@@ -121,6 +138,19 @@ def main(cfg: DictConfig):
         del inference_pipeline
 
         gc.collect()
+
+    # Concatenate all metrics into a single DataFrame
+    all_metrics_df = pd.concat(all_metrics, ignore_index=True)
+
+    # Save the concatenated metrics to a CSV file
+    all_metrics_df.to_csv('all_folds_metrics.csv', index=False)
+
+    Logger.current_logger().report_table(
+            title=f'{cfg.name}_metrcis', 
+            series=f'{cfg.name}', 
+            iteration=fold, 
+            table_plot=all_metrics_df
+        )
 
 
 if __name__ == '__main__':

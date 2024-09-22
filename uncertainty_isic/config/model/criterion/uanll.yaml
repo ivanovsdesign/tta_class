@@ -1,0 +1,4 @@
+_target_: functional.criterion.UANLLoss
+
+smoothing: 0.1
+n_classes: 2

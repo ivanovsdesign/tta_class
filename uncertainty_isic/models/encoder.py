@@ -51,6 +51,7 @@ class ISICModel(nn.Module):
         self.gap = nn.AdaptiveAvgPool2d(1)
 
         if isinstance(criterion, type(UANLLoss(0, 0))):
+            print('Model uncertainty toggled')
             self.out_chans = 3
         else:
             self.out_chans = 2

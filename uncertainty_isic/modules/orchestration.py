@@ -4,6 +4,8 @@ from typing import Callable
 
 import pytorch_lightning as pl
 
+from functional.criterion import UANLLoss
+
 class ClassModel(pl.LightningModule):
     def __init__(self,
                  model: Callable,
@@ -18,6 +20,9 @@ class ClassModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, targets = batch
         outputs = self(images)
+        if isinstance(self.criterion, UANLLoss):
+            # Split the output into predictions and uncertainty
+            predictions = outputs[:, :-1]
         loss = self.criterion(outputs, targets)
         self.log('train_loss', loss)
         return loss
@@ -25,8 +30,14 @@ class ClassModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         images, targets = batch
         outputs = self(images)
+        if isinstance(self.criterion, UANLLoss):
+            predictions = outputs[:, :-1]
+        else: 
+            predictions = outputs
+        
         loss = self.criterion(outputs, targets)
-        sm = nn.functional.softmax(outputs, dim=1)
+        
+        sm = nn.functional.softmax(predictions, dim=1)
         acc = (sm.argmax(1) == targets).sum() / len(targets)
         self.log('val_loss', loss, prog_bar=True)
         self.log('val_acc', acc, prog_bar=True)
@@ -34,6 +45,4 @@ class ClassModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-4)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 16 * 50, gamma=0.5, last_epoch=-1, verbose=0)
-        # return [optimizer], [scheduler]
         return optimizer

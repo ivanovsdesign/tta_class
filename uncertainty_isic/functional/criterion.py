@@ -4,14 +4,16 @@ import torch.nn as nn
 class UANLLoss(nn.Module):
     def __init__(self,
                  smoothing: float,
-                 classes: int):
+                 n_classes: int):
         super(UANLLoss, self).__init__()
         self.confidence = 1.0 - smoothing
         self.smoothing = smoothing
-        self.clc = classes
+        self.clc = n_classes
         
     def forward(self,x,y):
-        logvar  = (x[:,self.clc:]) #** 2 
+        print(f'logvar: {x.shape}')
+        logvar  = (x[:,-1:]) ** 2 
+        print(f'logvar: {logvar.shape}')
         prob = x[:,:self.clc]
 
         with torch.no_grad():
