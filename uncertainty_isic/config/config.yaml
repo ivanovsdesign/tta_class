@@ -5,13 +5,19 @@ defaults:
 
 name: enetv2s
 
+debug: true
+
+num_folds: 5
+
+checkpoint_path: null 
+
 seed: 42
 
 img_size: 224
 batch_size: 32
 num_workers: 0
 
-max_epochs: 100
+max_epochs: 1
 
 csv_file: "/repo/tta_class/data/dataset.csv"
 img_dir: "/repo/tta_class/data/images"

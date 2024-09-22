@@ -37,11 +37,11 @@ class ISICInferencePipeline():
         all_preds = []
         all_targets = []
         with torch.no_grad():
-            for batch in self.datamodule.test_loader:
+            for batch in self.datamodule.val_dataloader():
                 images, targets = batch
                 outputs = self.module(images)
-                preds = torch.softmax(outputs, dim=1).cpu().numpy()
-                all_preds.append(preds)
+                preds = torch.softmax(outputs, dim=1).detach().cpu()
+                all_preds.append(preds.numpy())
                 all_targets.append(targets.cpu().numpy())
         all_preds = np.concatenate(all_preds)
         all_targets = np.concatenate(all_targets)
@@ -54,7 +54,7 @@ class ISICInferencePipeline():
         all_preds = []
         all_targets = []
         with torch.no_grad():
-            for batch in self.datamodule:
+            for batch in self.datamodule.val_dataloader():
                 images, targets = batch
                 batch_preds = []
                 for _ in range(num_tta):
@@ -69,8 +69,11 @@ class ISICInferencePipeline():
 
         return all_preds, all_targets
     
-    def compute_metrics(preds: np.array,
-                        targets: np.array):
+    def compute_metrics(self,
+                        preds: np.array,
+                        targets: np.array,
+                        prefix: str = ''):
+
         pred_labels = np.argmax(preds, axis=1)
         accuracy = accuracy_score(targets, pred_labels)
         auroc = roc_auc_score(targets, preds[:, 1])
@@ -85,9 +88,9 @@ class ISICInferencePipeline():
         pauroc = auc(filtered_recall, filtered_precision)
         
         return {
-            'accuracy': accuracy,
-            'auroc': auroc,
-            'f1': f1,
-            'pauroc_0.8': pauroc
+            f'{prefix}_accuracy': accuracy,
+            f'{prefix}_auroc': np.array(auroc, dtype=np.float64),
+            f'{prefix}_f1': np.array(f1, dtype=np.float64),
+            f'{prefix}_pauroc_0.8': np.array(pauroc, dtype=np.float64)
         }
     

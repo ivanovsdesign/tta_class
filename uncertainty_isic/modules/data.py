@@ -7,7 +7,8 @@ from datasets.isic_balanced import ISICDataset
 
 class ISICDataModule(pl.LightningDataModule):
     def __init__(self,
-                 csv_file: str,
+                 train_df: pd.DataFrame,
+                 val_df: pd.DataFrame,
                  img_dir: str,
                  transform: bool = None,
                  batch_size: int = 32,
@@ -18,7 +19,8 @@ class ISICDataModule(pl.LightningDataModule):
         `is_tta` flag ensures transforms for test time augmentations are being used
         '''
         super().__init__()
-        self.csv_file = csv_file
+        self.train_df = train_df
+        self.val_df = val_df
         self.img_dir = img_dir
         self.transform = transform
         self.batch_size = batch_size
@@ -26,15 +28,10 @@ class ISICDataModule(pl.LightningDataModule):
         self.seed = seed
 
     def setup(self, stage=None):
-        df = pd.read_csv(self.csv_file)
-        df['target'] = df['target'].astype(int)
-        train_df, val_test_df = train_test_split(df, test_size=0.4, stratify=df['target'], random_state=self.seed)
-        val_df, test_df = train_test_split(val_test_df, test_size=0.5, stratify=val_test_df['target'], random_state=42)
-        
-        self.train_dataset = ISICDataset(train_df, self.img_dir, transform=self.transform['train'])
-        self.val_dataset = ISICDataset(val_df, self.img_dir, transform=self.transform['valid'])
-        self.test_dataset = ISICDataset(test_df, self.img_dir, transform=self.transform['valid'])
-        self.tta_dataset = ISICDataset(test_df, self.img_dir, transform=self.transform['tta'])
+        self.train_dataset = ISICDataset(self.train_df, self.img_dir, transform=self.transform['train'])
+        self.val_dataset = ISICDataset(self.val_df, self.img_dir, transform=self.transform['valid'])
+        self.test_dataset = ISICDataset(self.val_df, self.img_dir, transform=self.transform['valid'])
+        self.tta_dataset = ISICDataset(self.val_df, self.img_dir, transform=self.transform['tta'])
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)

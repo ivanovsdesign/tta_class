@@ -20,18 +20,21 @@ class ISICTrainingPipeline():
     def setup():
         pass
     def train(self, **kwargs):
-        trainer = Trainer(
-            max_epochs=self.max_epochs,  # Number of epochs to train for
-            logger=True,  # Use default logger (TensorBoard)
-            callbacks=[LearningRateMonitor(logging_interval='epoch'),
-                       ModelCheckpoint(dirpath='checkpoints',
+        checkpoint_callback = ModelCheckpoint(dirpath='checkpoints',
                                         monitor='val_loss',
                                         save_top_k=1,
                                         mode='min',
                                         filename=f'{self.cfg.name}_{self.cfg.model.backbone}'+'{epoch:02d}-{val_acc:.2f}',
                                         verbose=True
                                         )
+        trainer = Trainer(
+            max_epochs=self.max_epochs,  # Number of epochs to train for
+            logger=True,  # Use default logger (TensorBoard)
+            callbacks=[LearningRateMonitor(logging_interval='epoch'),
+                       checkpoint_callback
                         ])
 
         # Train the module
         trainer.fit(self.module, datamodule=self.datamodule)
+
+        return checkpoint_callback.best_model_path
