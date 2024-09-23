@@ -13,12 +13,14 @@ class ClassModel(pl.LightningModule):
                  model: Callable,
                  criterion: Callable,
                  lr: int,
-                 weight_decay: float):
+                 weight_decay: float,
+                 num_epochs: int):
         super(ClassModel, self).__init__()
         self.model = model
         self.criterion = criterion
         self.lr = lr
         self.weight_decay = weight_decay
+        self.num_epochs = num_epochs
 
     def forward(self, x):
         return self.model(x)
