@@ -1,0 +1,6 @@
+_target_: models.enetv2s.ISICModel
+
+backbone: "tf_efficientnetv2_s"
+drop_rate: 0
+drop_rate_path: 0.
+out_chans: 2

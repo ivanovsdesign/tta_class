@@ -1,24 +1,28 @@
 defaults:
   - _self_
-  - model: enetv2s
+  - model: enetv2s_bare
   - criterion: ce
 
 name: enetv2s_ce
 
-debug: null
+debug: true
 
 num_tta: 100
 num_folds: 5
 
-checkpoint_path: null 
+patience: 5
 
+lr: 1e-4
+weight_decay: 1e-3
+
+checkpoint_path: null
 seed: 42
 
 img_size: 224
 batch_size: 32
 num_workers: 0
 
-max_epochs: 10
+max_epochs: 100
 
 csv_file: "/repo/tta_class/data/dataset.csv"
 img_dir: "/repo/tta_class/data/images"
