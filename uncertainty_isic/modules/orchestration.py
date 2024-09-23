@@ -4,15 +4,21 @@ from typing import Callable
 
 import pytorch_lightning as pl
 
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 from functional.criterion import UANLLoss
 
 class ClassModel(pl.LightningModule):
     def __init__(self,
                  model: Callable,
-                 criterion: Callable):
+                 criterion: Callable,
+                 lr: int,
+                 weight_decay: float):
         super(ClassModel, self).__init__()
         self.model = model
         self.criterion = criterion
+        self.lr = lr
+        self.weight_decay = weight_decay
 
     def forward(self, x):
         return self.model(x)
@@ -44,5 +50,18 @@ class ClassModel(pl.LightningModule):
         return {'val_loss': loss, 'val_acc': acc}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-4)
-        return optimizer
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        
+        # Create the CosineAnnealingLR scheduler
+        scheduler = CosineAnnealingLR(optimizer, T_max=self.num_epochs, eta_min=1e-6)
+        
+        # Return the optimizer and scheduler
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'val_loss',  # Metric to monitor for scheduling
+                'interval': 'epoch',    # Apply the scheduler every epoch
+                'frequency': 1          # Apply the scheduler every epoch
+            }
+        }
