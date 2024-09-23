@@ -5,7 +5,7 @@ defaults:
 
 name: enetv2s_ce
 
-debug: true
+debug: null
 
 num_tta: 100
 num_folds: 5

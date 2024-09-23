@@ -3,7 +3,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 import clearml
-from clearml import Task, Logger
+from clearml import Task, Logger, StorageManager
 
 import torch
 import torch.nn as nn 
@@ -12,6 +12,8 @@ import albumentations as A
 
 import pandas as pd
 import numpy as np
+
+import glob
 
 import yaml
 
@@ -97,8 +99,9 @@ def main(cfg: DictConfig):
 
         module = ClassModel(model = model,
                             criterion = criterion,
-                            lr = cfg.clr,
-                            weight_decay = cfg.weight_decay)
+                            lr = cfg.lr,
+                            weight_decay = cfg.weight_decay,
+                            num_epochs = cfg.max_epochs)
         
         if cfg.checkpoint_path:
             best_ckpt_path = cfg.checkpoint_path
@@ -135,11 +138,11 @@ def main(cfg: DictConfig):
         
         np.save(f'preds_{cfg.name}_{fold}.npy', preds_no_tta)
         np.save(f'targets_{cfg.name}_{fold}.npy', targets_no_tta)
-        
+
         preds_tta, targets_tta, uncertainties_tta, confidences_tta = inference_pipeline.inference_with_tta(num_tta=cfg.num_tta)
 
         np.save(f'preds_tta_{cfg.name}_{fold}.npy', preds_no_tta)
-        np.save(f'targets_tta_{cfg.name}_{fold}.npy', targets_no_tta)
+        np.save(f'targets_tta_{cfg.name}_{fold}.npy', targets_no_tta)      
 
         metrics_tta = inference_pipeline.compute_metrics(preds = preds_tta,
                                                             targets = targets_tta,
