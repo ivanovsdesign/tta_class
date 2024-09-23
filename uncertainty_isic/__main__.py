@@ -53,6 +53,8 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     #Task.set_offline(True)
     task = Task.init(project_name='isic_balanced',
                     task_name=f'debug_{cfg.model.backbone}' if cfg.debug else f'{cfg.model.backbone}_{cfg.criterion._target_}_{cfg.seed}',
@@ -97,10 +99,14 @@ def main(cfg: DictConfig):
                             criterion = criterion)
         
         if cfg.checkpoint_path:
-            best_ckpt_path = torch.load(cfg.checkpoint_path)
+            best_ckpt_path = cfg.checkpoint_path
+            training_pipeline = None
             checkpoint = torch.load(best_ckpt_path, weights_only=True)
             module.load_state_dict(checkpoint['state_dict'])
+            module = module.to(device)
+            datamodule.setup()
         else: 
+            module = module.to(device)
             training_pipeline = ISICTrainingPipeline(datamodule=datamodule,
                                                     module=module,
                                                     max_epochs=cfg.max_epochs,
@@ -111,6 +117,7 @@ def main(cfg: DictConfig):
             checkpoint = torch.load(best_ckpt_path, weights_only=True)
             module.load_state_dict(checkpoint['state_dict'])
             torch.save(module, f'{cfg.name}_{fold}.pth')
+            module = module.to(device)
 
 
         inference_pipeline = ISICInferencePipeline(datamodule=datamodule,
@@ -177,7 +184,7 @@ def main(cfg: DictConfig):
             table_plot=all_metrics_df
         )
     
-    Task.close(task)
+    Task.mark_completed(task)
 
 
 if __name__ == '__main__':
