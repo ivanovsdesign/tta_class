@@ -5,3 +5,4 @@ tb_logs/
 outputs/
 clearml.sh
 nohup.out
+multirun/

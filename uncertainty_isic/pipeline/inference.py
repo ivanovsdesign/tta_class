@@ -72,7 +72,7 @@ class ISICInferencePipeline():
         all_uncertainties = []
         all_confidences = []
         with torch.no_grad():
-            for batch in self.datamodule.val_dataloader():
+            for batch in self.datamodule.tta_dataloader():
                 images, targets = batch
                 batch_preds = []
                 batch_uncertainties = []

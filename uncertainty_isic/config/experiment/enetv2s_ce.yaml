@@ -1,6 +1,0 @@
-@package _global_
-
-defaults:
-  - _self_
-  - model: enetv2s
-  - criterion: ce

@@ -1,11 +1,11 @@
 defaults:
   - _self_
   - model: enetv2s
-  - criterion: uanll
+  - criterion: ce
 
-name: enetv2s_uanll
+name: enetv2s_ce
 
-debug: true
+debug: null
 
 num_tta: 100
 num_folds: 5
@@ -18,7 +18,7 @@ img_size: 224
 batch_size: 32
 num_workers: 0
 
-max_epochs: 1
+max_epochs: 10
 
 csv_file: "/repo/tta_class/data/dataset.csv"
 img_dir: "/repo/tta_class/data/images"

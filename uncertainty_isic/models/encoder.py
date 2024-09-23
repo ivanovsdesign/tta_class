@@ -33,7 +33,8 @@ class ISICModel(nn.Module):
                  drop_rate_path: float,
                  drop_rate_last: float,
                  criterion: Callable = nn.CrossEntropyLoss,
-                 pretrained: bool = False):
+                 pretrained: bool = False,
+                 out_chans: int = 2):
         '''
         Model with adaptive output FC for using with UANLL Loss
         ! Uses external variable `LOSS`
@@ -46,15 +47,11 @@ class ISICModel(nn.Module):
             drop_path_rate=drop_rate_path,
             pretrained=pretrained,
         )
+
+        self.out_chans = out_chans
         
         self.nb_fts = self.encoder.num_features
         self.gap = nn.AdaptiveAvgPool2d(1)
-
-        if isinstance(criterion, type(UANLLoss(0, 0))):
-            print('Model uncertainty toggled')
-            self.out_chans = 3
-        else:
-            self.out_chans = 2
 
         self.head = nn.Sequential(
                         nn.Linear(self.nb_fts, 128),

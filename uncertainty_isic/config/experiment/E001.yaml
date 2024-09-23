@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - _self_
+  - criterion: ce
+
+name: enetv2s_ce
+
+model:
+  out_chans: 2

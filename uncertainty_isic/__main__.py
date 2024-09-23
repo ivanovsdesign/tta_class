@@ -28,14 +28,38 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset
 
+import random 
+import os
+
+import pytorch_lightning as pl
+
 
 import gc
 
+def seed_everything(seed: int):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    pl.seed_everything(seed)
+    g = torch.Generator()
+    g.manual_seed(seed)
+
 @hydra.main(config_path="config", config_name="config")
 def main(cfg: DictConfig):
+
+    seed_everything(cfg.seed)
+
     #Task.set_offline(True)
     task = Task.init(project_name='isic_balanced',
-               task_name=f'debug_{cfg.name}' if cfg.debug else f'{cfg.name}')
+                    task_name=f'debug_{cfg.model.backbone}' if cfg.debug else f'{cfg.model.backbone}_{cfg.criterion._target_}_{cfg.seed}',
+                    auto_connect_frameworks={'pytorch' : '*.pth'},
+                    reuse_last_task_id=True)
+                    
+    task.connect_configuration(OmegaConf.to_container(cfg))
     
     kfold = StratifiedKFold(n_splits=cfg.num_folds, shuffle=True, random_state=cfg.seed)
 
@@ -80,12 +104,13 @@ def main(cfg: DictConfig):
             training_pipeline = ISICTrainingPipeline(datamodule=datamodule,
                                                     module=module,
                                                     max_epochs=cfg.max_epochs,
-                                                    cfg=cfg)
+                                                    cfg=cfg,
+                                                    fold=fold)
             
             best_ckpt_path = training_pipeline.train()
             checkpoint = torch.load(best_ckpt_path, weights_only=True)
             module.load_state_dict(checkpoint['state_dict'])
-            #torch.save(module, f'{cfg.name}_{fold}.pth')
+            torch.save(module, f'{cfg.name}_{fold}.pth')
 
 
         inference_pipeline = ISICInferencePipeline(datamodule=datamodule,
@@ -143,15 +168,18 @@ def main(cfg: DictConfig):
     all_metrics_df = pd.concat(all_metrics, ignore_index=True)
 
     # Save the concatenated metrics to a CSV file
-    all_metrics_df.to_csv('all_folds_metrics.csv', index=False)
+    all_metrics_df.to_csv(f'all_folds_metrics_{cfg.seed}.csv', index=False)
 
     Logger.current_logger().report_table(
-            title=f'{cfg.name}_metrcis', 
-            series=f'{cfg.name}', 
+            title=f'{cfg.name}_metrics', 
+            series=f'{cfg.model.backbone}_{cfg.seed}', 
             iteration=fold, 
             table_plot=all_metrics_df
         )
+    
+    Task.close(task)
 
 
 if __name__ == '__main__':
     main()
+    gc.collect()
