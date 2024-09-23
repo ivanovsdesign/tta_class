@@ -96,7 +96,9 @@ def main(cfg: DictConfig):
         criterion = instantiate(cfg.criterion)
 
         module = ClassModel(model = model,
-                            criterion = criterion)
+                            criterion = criterion,
+                            lr = cfg.clr,
+                            weight_decay = cfg.weight_decay)
         
         if cfg.checkpoint_path:
             best_ckpt_path = cfg.checkpoint_path
@@ -111,7 +113,8 @@ def main(cfg: DictConfig):
                                                     module=module,
                                                     max_epochs=cfg.max_epochs,
                                                     cfg=cfg,
-                                                    fold=fold)
+                                                    fold=fold,
+                                                    patience=cfg.patience)
             
             best_ckpt_path = training_pipeline.train()
             checkpoint = torch.load(best_ckpt_path, weights_only=True)
@@ -162,6 +165,13 @@ def main(cfg: DictConfig):
 
         metrics.to_csv(f'{fold}_metrics.csv')
 
+        Logger.current_logger().report_table(
+            title=f'{cfg.name}_metrics_fold{fold}', 
+            series=f'{cfg.model.backbone}_{cfg.seed}', 
+            iteration=fold, 
+            table_plot=metrics
+        )
+
         del model
         del datamodule
         del criterion
@@ -180,7 +190,7 @@ def main(cfg: DictConfig):
     Logger.current_logger().report_table(
             title=f'{cfg.name}_metrics', 
             series=f'{cfg.model.backbone}_{cfg.seed}', 
-            iteration=fold, 
+            iteration=cfg.seed, 
             table_plot=all_metrics_df
         )
     

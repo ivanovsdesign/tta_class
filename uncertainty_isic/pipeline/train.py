@@ -29,7 +29,7 @@ class ISICTrainingPipeline():
                                         )
         early_stopping_callback = EarlyStopping(
             monitor='val_loss',
-            patience=3,  # Number of epochs with no improvement after which training will be stopped
+            patience=self.patience,  # Number of epochs with no improvement after which training will be stopped
             verbose=True,
             mode='min'
         )
