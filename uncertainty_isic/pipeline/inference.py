@@ -21,6 +21,10 @@ import numpy as np
 
 from omegaconf import DictConfig
 
+from tqdm import tqdm
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class ISICInferencePipeline():
     def __init__(self,
                  datamodule: Callable,
@@ -32,32 +36,40 @@ class ISICInferencePipeline():
         self.datamodule = datamodule
         self.module = module
         self.criterion = criterion
+        self.device = device
 
     def setup():
         pass
 
     def inference_without_tta(self):
+        print('Inference without TTA')
         self.module.eval()
         all_preds = []
         all_targets = []
         all_uncertainties = []
         all_confidences = []
+
         with torch.no_grad():
-            for batch in self.datamodule.val_dataloader():
+            for batch in tqdm(self.datamodule.val_dataloader()):
                 images, targets = batch
+                images, targets = images.to(self.device), targets.to(self.device)
+                
                 outputs = self.module(images)
+                
                 if isinstance(self.criterion, UANLLoss):
-                    # Split the output into predictions and uncertainty
                     preds = torch.softmax(outputs[:, :-1], dim=1).detach().cpu()
                     uncertainties = outputs[:, -1].detach().cpu()
                 else:
                     preds = torch.softmax(outputs, dim=1).detach().cpu()
                     uncertainties = torch.zeros_like(preds[:, 0])  # Placeholder for uncertainty
+                
                 confidences = preds.max(dim=1).values.detach().cpu()
+                
                 all_preds.append(preds.numpy())
                 all_targets.append(targets.cpu().numpy())
                 all_uncertainties.append(uncertainties.numpy())
                 all_confidences.append(confidences.numpy())
+
         all_preds = np.concatenate(all_preds)
         all_targets = np.concatenate(all_targets)
         all_uncertainties = np.concatenate(all_uncertainties)
@@ -66,44 +78,57 @@ class ISICInferencePipeline():
         return all_preds, all_targets, all_uncertainties, all_confidences
     
     def inference_with_tta(self, num_tta: int = 5):
+        print(f'Inference with TTA\nNumber of TTA: {num_tta}')
         self.module.eval()
         all_preds = []
         all_targets = []
         all_uncertainties = []
         all_confidences = []
+
         with torch.no_grad():
-            for batch in self.datamodule.tta_dataloader():
-                images, targets = batch
+            for tta_index in tqdm(range(num_tta), desc="TTA Iterations"):
                 batch_preds = []
                 batch_uncertainties = []
                 batch_confidences = []
-                for _ in range(num_tta):
+
+                for batch in self.datamodule.tta_dataloader():
+                    images, targets = batch
+                    images, targets = images.to(self.device), targets.to(self.device)
+                    
                     outputs = self.module(images)
+                    
                     if isinstance(self.criterion, UANLLoss):
-                        # Split the output into predictions and uncertainty
                         preds = torch.softmax(outputs[:, :-1], dim=1).detach().cpu()
                         uncertainties = outputs[:, -1].detach().cpu()
                     else:
                         preds = torch.softmax(outputs, dim=1).detach().cpu()
                         uncertainties = torch.zeros_like(preds[:, 0])  # Placeholder for uncertainty
+                    
                     confidences = preds.max(dim=1).values.detach().cpu()
+                    
                     batch_preds.append(preds.numpy())
                     batch_uncertainties.append(uncertainties.numpy())
                     batch_confidences.append(confidences.numpy())
-                batch_preds = np.mean(batch_preds, axis=0)
-                batch_uncertainties = np.mean(batch_uncertainties, axis=0)
-                batch_confidences = np.mean(batch_confidences, axis=0)
-                all_preds.append(batch_preds)
-                all_targets.append(targets.cpu().numpy())
-                all_uncertainties.append(batch_uncertainties)
-                all_confidences.append(batch_confidences)
-        
-        all_preds = np.concatenate(all_preds)
-        all_targets = np.concatenate(all_targets)
-        all_uncertainties = np.concatenate(all_uncertainties)
-        all_confidences = np.concatenate(all_confidences)
+                    
+                    if tta_index == 0:
+                        all_targets.append(targets.cpu().numpy())
 
-        return all_preds, all_targets, all_uncertainties, all_confidences
+                all_preds.append(np.concatenate(batch_preds, axis=0))
+                all_uncertainties.append(np.concatenate(batch_uncertainties, axis=0))
+                all_confidences.append(np.concatenate(batch_confidences, axis=0))
+
+        # Convert lists to numpy arrays
+        all_preds = np.array(all_preds)
+        all_uncertainties = np.array(all_uncertainties)
+        all_confidences = np.array(all_confidences)
+
+        # Average the predictions, uncertainties, and confidences over the TTA iterations
+        avg_preds = np.mean(all_preds, axis=0)
+        avg_uncertainties = np.mean(all_uncertainties, axis=0)
+        avg_confidences = np.mean(all_confidences, axis=0)
+        all_targets = np.concatenate(all_targets, axis=0)
+
+        return avg_preds, all_targets, avg_uncertainties, avg_confidences
     
     def compute_metrics(self,
                         preds: np.array,
