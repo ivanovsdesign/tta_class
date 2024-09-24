@@ -1,0 +1,13 @@
+# @package _global_
+defaults:
+  - _self_
+  - criterion: uanll
+
+name: transfer_enetv2s_uanll
+
+model:
+  out_chans: 3
+
+dir_path: /repo/tta_class/outputs/2024-09-23/22-10-27/
+
+# transfer.py

@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - _self_
+  - criterion: ce
+
+name: cifar_ce
+
+model:
+  out_chans: 10

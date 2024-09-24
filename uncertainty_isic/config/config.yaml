@@ -10,7 +10,7 @@ debug: null
 num_tta: 100
 num_folds: 5
 
-patience: 5
+patience: 20
 
 lr: 1e-4
 weight_decay: 1e-3
